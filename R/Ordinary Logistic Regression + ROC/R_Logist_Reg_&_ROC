@@ -1,0 +1,57 @@
+
+#rm(list=ls())
+require(MASS) # load Package
+
+# Import the file 
+
+library(readxl)
+Hyper_v_Else <- read_excel("C:/Users/pmo/Desktop/R/Hyper_v_Else.xlsx", 
+                           col_names = FALSE)
+
+# Give names to the columns
+
+colnames(Hyper_v_Else) <- c("A","B","C","D","E","F","G","H","I","J","K","GROUP")
+Data=Hyper_v_Else
+Data=Data[-617,] # Last column was full of NAN
+
+# Factorize the last (reponse) colunm 
+
+head(Data,1); Data$GROUP=factor(Data$GROUP)
+
+# Select random patients for Base and Test
+
+ind = sample(1:nrow(Data),500) # random raw numbers = the number of patients on which we will build the model
+Data2 = Data[ind,]
+Test = Data[-ind,] # We remove the selected patients to get our Test matrix
+rm(Data)
+rm(Hyper_v_Else)
+
+# Run the multinomial logistic regression
+
+#m=glm(GROUP ~ A +B + C + D + E + F + G +H + I + J + K, data=Data2,family = "binomial")
+# res = step(m,direction='both') # select the more relevant markers
+Pred = predict(m,Test) # We can use res instead of m if the result of the step function allows to get better results
+prob = exp(Pred)/(1+exp(Pred))
+tmp = prob>=0.5
+T=table(tmp,Test$GROUP)
+colnames(T) <- c('Else', 'Hyper')
+score = diag(T)/rowSums(T)
+#colnames(score) <- c('Else', 'Hyper')
+
+
+pred=prediction(Pred,Test[,12])
+perf <- performance(pred, "tpr", "fpr")
+AUC = performance(pred,'auc')
+auc =AUC@y.values
+plot(perf,main=paste("ROC for Classification by Logistic Regression","\n ", 'Area under the Curve =', auc))
+
+
+# Print
+
+print(T)
+print('Prediction accuracy (in %)')
+print(score)
+print('Mean prediction accuracy')
+print(mean(diag(T)/rowSums(T)))
+
+Stats <- exp(cbind(OR = coef(m), confint(m)))
