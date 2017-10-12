@@ -1,0 +1,65 @@
+load('Data_616_Duo.mat')
+
+% interval
+a = 1;
+b = length(Data_616_Duo);
+n = 500; % number of Data in the base on which the model is built
+
+%[Data,Test] = Pick_random_DUO( Data_616_Duo );
+
+Data=Data_616_Duo;
+% Here we have got two matrices :
+% Data = n random patients on which we fit the model
+% Test = the remaining patients on which we test the model
+
+prdct=Data(:,12);
+test=categorical(prdct);
+
+%[mdl,dev,stats] = glmfit(Data(:,1:11),test,'binomial');
+mdl = fitglm(Data(:,1:11),test,'Distribution','binomial');
+%mdl = fitglm(Data(:,1:11),test);
+%[pred,CI]=predict(mdl,Test(:,1:11));
+
+
+scores = mdl.Fitted.Probability;
+
+
+[X,Y,T,AUC] = perfcurve(prdct,scores,'2');
+
+%ypred=feval(mdl,Test(:,1:11));
+%tmp= find(ypred>=0.5);
+
+%% Plotting 
+plot(X,Y)
+xlabel('False positive rate')
+ylabel('True positive rate')
+title({'ROC for Classification by Logistic Regression',['Area under the curve : ' num2str(AUC)]})
+
+%% Getting table
+
+prob=scores>=0.5;
+prob(:,2)=prdct==2; 
+result=zeros(2,2);
+
+for i=1:length(prob)
+    if prob(i,1)==0 && prob(i,1)==prob(i,2)
+        result(1,1)=result(1,1)+1;
+    elseif prob(i,1)==1 && prob(i,1)==prob(i,2)
+        result(2,2)=result(2,2)+1;
+    elseif prob(i,1)==0 && prob(i,1)~= prob(i,2)
+        result(2,1)=result(2,1)+1;
+    elseif prob(i,1)==1 && prob(i,1) ~= prob(i,2)
+        result(1,2)=result(1,2)+1;
+    end
+end
+
+result_per(1,1)=(result(1)/(result(1)+result(3)))*100;
+result_per(2,1)=(result(2)/(result(2)+result(4)))*100;
+result_per(1,2)=(result(3)/(result(1)+result(3)))*100;
+result_per(2,2)=(result(4)/(result(2)+result(4)))*100;
+
+% cnames= {'Else','Hyper-reactive'};
+% rnames= {'Else','Hyper'};
+% figure(2)
+% t = uitable('Data',result,'ColumnName',cnames,'RowName',rnames, 'ColumnWidth',{100});
+
